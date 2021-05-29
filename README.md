@@ -2,16 +2,19 @@
 
 A.	Install Redis
 
-B.	Generate keys and certificates
-  1. Install openssl on your machine. 
-  2. Generate private key and certificate of CA (Certificate Authority)
-  3. Generate private key and a certificate signing request of redis server
-  4. Create keystore and import redis server certificate 
-  5. Create truststore and import CA certificate
+B.	Generate keypairs:
+  * Install openssl on your machine
+  * Generate CA key pair
+  * Generate Server private key and csr (certificate signing request)
+  * Generate Server certificate (by signing with CA keypair)
+  * Create Client private key and csr
+  * Generate Client certificate (by signing with CA keypair)
+  * Create KeyStore and import Client keypair 
+  * Create TrustStore and import CA certificate
   
-C.	Configure redis.conf and start redis server
+C.	Configure redis.conf and start redis-server
 
-D.	Start redis-cli with certificates 
+D.	Start redis-cli in tls mode
 
 ## Detailed Steps:
 
@@ -39,17 +42,14 @@ export DNS_ADDRESS=ip-<Your IP replacing . with - >
 
 1.	*Generate CA private key* 
 ```  
-openssl genrsa -out rootCA.key 2048
+openssl genrsa -out rootCA.key –aes256 2048
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;rsa: an asymmetric cryptography algo uses a private and a public key to encryption and decryption 
   
 &nbsp;&nbsp;&nbsp;&nbsp;2048: length of certificate, other is 4096 which is slower and increases CPU consumption
   
-&nbsp;&nbsp;&nbsp;&nbsp;We can use aes256 which is a secure symmetric encryption and uses a cipher. 
-```
-openssl genrsa -out rootCA.key –aes256
-```  
-  
+&nbsp;&nbsp;&nbsp;&nbsp;aes256: a secure symmetric encryption which uses a cipher
+
 ![](https://github.com/jain-abhishek/images/blob/main/1.jpg)
 
 2.	*Generate CA certificate*
@@ -62,8 +62,7 @@ openssl req -x509 -new -key rootCA.key -sha256 -days 365 -out rootCA.crt
 
 ![](https://github.com/jain-abhishek/images/blob/main/2.JPG)
 
-&nbsp;&nbsp;&nbsp;&nbsp;Filling some dummy values here. 
-&nbsp;&nbsp;&nbsp;&nbsp;Here CN is important, it must be address of the server you want to access, otherwise you will see errors: java.security.cert.CertificateException: No name matching <host> found. For us, CN is important for server certificate. 
+&nbsp;&nbsp;&nbsp;&nbsp;Here CN is important, it must be address/FQDN of the server you want to access, otherwise you will see errors: java.security.cert.CertificateException: No name matching <host> found.  
 
 3.	*Check if certificate is having all the necessary information which is provided in the previous step*
 ```
@@ -73,29 +72,35 @@ openssl x509 -in rootCA.crt -noout –text
   
 4.	*Generate server private key*
 ```  
-openssl genrsa -out redisServer.key -aes256
+openssl genrsa -out redisServer.key -aes256 2048
 ```
   
 5.	*Create certificate signing request*
 ```  
-openssl req -new -sha256 -key redisServer.key -subj "/C=IN/ST=UP/L=Noida/O=OldIndianStreets/OU=IT/CN=${DNS_ADDRESS}" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "\n[SAN]\nsubjectAltName=DNS:${DNS_ADDRESS}")) -out redisServer.csr
+openssl req -new -sha256 -key redisServer.key -subj "/C=IN/O=OldIndianStreets/OU=IT/CN=${DNS_ADDRESS}" -out redisServer.csr
+openssl req -in redisServer.csr -noout -subject -verify
 ```  
-&nbsp;&nbsp;&nbsp;&nbsp;Here subject and subject alt name are important to provide, otherwise you may see errors like: No subject alternative names matching IP address. Or: javax.net.ssl.SSLHandshakeException: java.security.cert.CertificateException: No subject alternative names present.
+&nbsp;&nbsp;&nbsp;&nbsp;Here subject is important to provide
   
-&nbsp;&nbsp;&nbsp;&nbsp;Other important point is that CN of CA and redis server must be different, otherwise you may see related errors.
+&nbsp;&nbsp;&nbsp;&nbsp;Other important point is that CN of CA and Server must be different, otherwise you may see related errors.
   
-6.	*Sign server’s certificate using CA private key and certificate*
+6.	*Sign server certificate using CA private key and certificate*
 ```  
-openssl x509 -req -in redisServer.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out redisServer.crt -extfile <(printf "\n[SAN]\nsubjectAltName=DNS:${DNS_ADDRESS}") -days 365 -sha256 -extensions SAN
+openssl x509 -req -in redisServer.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out redisServer.crt -extfile <(printf "\n[SAN]\nsubjectAltName=DNS:${DNS_ADDRESS}\nextendedKeyUsage=serverAuth") -days 365 -sha256 -ext SAN -extensions SAN
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;CAcreateserial: while signing CA generates a unique serial number for each certificate
                                                                                                                               
-&nbsp;&nbsp;&nbsp;&nbsp;extension: to include subject alternative name
+&nbsp;&nbsp;&nbsp;&nbsp;extension: to include subject alternative name                                                        
+
+&nbsp;&nbsp;&nbsp;&nbsp;extendedKeyUsage: to specify the usage of certificate ie: for server authentication or client authentication or both 
+
+Here subject alt name are important to provide, otherwise you may see errors like: No subject alternative names matching IP address. Or: javax.net.ssl.SSLHandshakeException: java.security.cert.CertificateException: No subject alternative names present.                                                            
 
 7.	*Check signed certificate has information about issuer, subject and san*
 ```
-openssl x509 -in redisServer.crt -noout -text
+openssl x509 -in redisServer.crt -noout -text -purpose                                                                                                                           openssl verify -CAfile rootCA.crt redisServer.crt
 ```
+&nbsp;&nbsp;&nbsp;&nbsp;purpose: tells about extended key usage                                                                                                       
 ![](https://github.com/jain-abhishek/images/blob/main/4.JPG)
                                                                                                                               
 8.	*Create keystore by including redis server private key and certificate*
