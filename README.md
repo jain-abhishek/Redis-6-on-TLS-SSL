@@ -68,7 +68,9 @@ openssl req -x509 -new -key rootCA.key -sha256 -days 365 -out rootCA.crt
 ```
 openssl x509 -in rootCA.crt -noout –text
 ```
-![](https://github.com/jain-abhishek/images/blob/main/3.JPG) 
+![](https://github.com/jain-abhishek/images/blob/main/3.JPG)
+![](https://github.com/jain-abhishek/images/blob/main/4.JPG)
+
   
 4.	*Generate server private key*
 ```  
@@ -106,7 +108,8 @@ openssl x509 -in redisServer.crt -noout -text -purpose                          
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;purpose: tells about extended key usage                                                                                                       
                                                                                                                               
-![](https://github.com/jain-abhishek/images/blob/main/4.JPG)
+![](https://github.com/jain-abhishek/images/blob/main/5.JPG)
+![](https://github.com/jain-abhishek/images/blob/main/6.JPG)
 ![](https://github.com/jain-abhishek/images/blob/main/7.JPG)
     
 8.	*Create Client keypair*
@@ -118,14 +121,13 @@ openssl x509 -req -in redisClient.csr -CA rootCA.crt -CAkey rootCA.key -CAcreate
 
 &nbsp;&nbsp;&nbsp;&nbsp;Here extendedKeyUsage is set as clientAuth, so the certificate can be used for client authentication only.
 
- 
 9. *Verify that the signed Client certificate has information of issuer, subject and san*
 ```
 openssl x509 -in redisClient.crt -noout -text -purpose
 ``` 
 ![](https://github.com/jain-abhishek/images/blob/main/8.JPG)
 ![](https://github.com/jain-abhishek/images/blob/main/9.JPG)
- 
+![](https://github.com/jain-abhishek/images/blob/main/10.JPG)
  
 10.	*Create keystore by including Client keypair*
 
@@ -142,8 +144,8 @@ openssl pkcs12 -export -in redisClient.crt -inkey redisClient.key -out redisClie
 ```
 openssl pkcs12 -info -in redisClientKeystore.p12
 ```
-![](https://github.com/jain-abhishek/images/blob/main/5.JPG)
- 
+![](https://github.com/jain-abhishek/images/blob/main/11.JPG)
+![](https://github.com/jain-abhishek/images/blob/main/12.JPG) 
  
 12.	*Create truststore* 
 
@@ -152,12 +154,13 @@ The truststore includes CA certificate by which Client certificate is signed. We
 ```
 keytool -import -alias redisCA -trustcacerts -file rootCA.crt -keystore cacerts
 ```
-                                                                                                                              
+ 
+![](https://github.com/jain-abhishek/images/blob/main/13.JPG)                                                                                                                              
 13.	*List all the certificates of truststore*
 ```                                                                                                                              
 keytool -list -keystore cacerts
 ```
-![](https://github.com/jain-abhishek/images/blob/main/6.JPG)
+![](https://github.com/jain-abhishek/images/blob/main/14.JPG)
   
  
 ### C.	Configure redis.conf and start redis server
@@ -188,6 +191,8 @@ https://en.wikipedia.org/wiki/PKCS
 https://wiki.openssl.org/index.php/Command_Line_Utilities
                                                                                                                               
 https://redis.io/topics/encryption
+
+https://www.digicert.com/faq/subject-alternative-name.htm 
                                                                                                                               
 
 
