@@ -92,7 +92,7 @@ openssl x509 -req -in redisServer.csr -CA rootCA.crt -CAkey rootCA.key -CAcreate
                                                                                                                               
 &nbsp;&nbsp;&nbsp;&nbsp;extension: to include subject alternative name                                                        
 
-&nbsp;&nbsp;&nbsp;&nbsp;extendedKeyUsage: to specify the usage of certificate ie: for server authentication or client authentication or both 
+&nbsp;&nbsp;&nbsp;&nbsp;extendedKeyUsage: to specify the usage of certificate ie: for server authentication or client authentication or both. Here the value is set as serverAuth, so the certificate is created for server authentication only.
 
 Here subject alt name are important to provide, otherwise you may see errors like: No subject alternative names matching IP address. Or: javax.net.ssl.SSLHandshakeException: java.security.cert.CertificateException: No subject alternative names present.                                                            
 
@@ -101,31 +101,50 @@ Here subject alt name are important to provide, otherwise you may see errors lik
 openssl x509 -in redisServer.crt -noout -text -purpose                                                                                                                           openssl verify -CAfile rootCA.crt redisServer.crt
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;purpose: tells about extended key usage                                                                                                       
-![](https://github.com/jain-abhishek/images/blob/main/4.JPG)
                                                                                                                               
-8.	*Create keystore by including redis server private key and certificate*
+![](https://github.com/jain-abhishek/images/blob/main/4.JPG)
+![](https://github.com/jain-abhishek/images/blob/main/7.JPG)
+    
+8.	*Create Client keypair*
 ```                                                                                                                              
-openssl pkcs12 -export -in redisServer.crt -inkey redisServer.key -out redisServerKeystore.p12 -CAfile rootCA.crt 
+openssl genrsa -out redisClient.key -aes256 2048
+openssl req -new -sha256 -key redisClient.key -subj "/C=IN/O=OldIndianStreets/OU=Client/CN=${DNS_ADDRESS}" -out redisClient.csr
+openssl x509 -req -in redisClient.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out redisClient.crt -extfile <(printf "\n[SAN]\nsubjectAltName=DNS:${DNS_ADDRESS}\nextendedKeyUsage=clientAuth") -days 365 -sha256 -ext SAN -extensions SAN
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;Here extendedKeyUsage is set as clientAuth, so the certificate can be used for client authentication only.
+
+9. 
+```
+openssl x509 -in redisClient.crt -noout -text -purpose
+``` 
+![](https://github.com/jain-abhishek/images/blob/main/8.JPG)
+![](https://github.com/jain-abhishek/images/blob/main/9.JPG)
+ 
+10.	*Create keystore by including Client keypair*
+```                                                                                                                              
+openssl pkcs12 -export -in redisClient.crt -inkey redisClient.key -out redisClientKeystore.p12 -CAfile rootCA.crt
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;pkcs12: standard of keystore
 
-9.	*Check if certificates exist in keystore*
+11.	*Check if certificates exist in keystore*
 ```
-openssl pkcs12 -info -in redisServerKeystore.p12
+openssl pkcs12 -info -in redisClientKeystore.p12
 ```
 ![](https://github.com/jain-abhishek/images/blob/main/5.JPG)
                                                                                                                               
-10.	*Create truststore* 
+12.	*Create truststore* 
 ```
-keytool -import -alias redisServerCA -trustcacerts -file rootCA.crt -keystore cacerts
+keytool -import -alias redisCA -trustcacerts -file rootCA.crt -keystore cacerts
 ```
                                                                                                                               
-11.	*List all the certificates of truststore*
+13.	*List all the certificates of truststore*
 ```                                                                                                                              
 keytool -list -keystore cacerts
 ```
 ![](https://github.com/jain-abhishek/images/blob/main/6.JPG)
-                                                                                                                              
+  
+ 
 ### C.	Configure redis.conf and start redis server
 
 *Update redis configuration file with TLS properties*
