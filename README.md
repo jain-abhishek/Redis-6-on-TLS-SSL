@@ -27,7 +27,7 @@ tar xzf redis-6.0.3.tar.gz
 
 cd redis-6.0.3
 ```
-Necessary commands to build Redis with SSL support:
+Necessary commands to build Redis with TLS support:
 ```
 make BUILD_TLS=yes
 
@@ -44,11 +44,11 @@ export DNS_ADDRESS=ip-<Your IP replacing . with - >
 ```  
 openssl genrsa -out rootCA.key –aes256 2048
 ```
-&nbsp;&nbsp;&nbsp;&nbsp;rsa: an asymmetric cryptography algo uses a private and a public key to encryption and decryption 
+&nbsp;&nbsp;&nbsp;&nbsp;rsa: an asymmetric cryptography algo uses a keypair to encryption and decryption 
   
 &nbsp;&nbsp;&nbsp;&nbsp;2048: length of certificate, other is 4096 which is slower and increases CPU consumption
   
-&nbsp;&nbsp;&nbsp;&nbsp;aes256: a secure symmetric encryption which uses a cipher
+&nbsp;&nbsp;&nbsp;&nbsp;aes256: a secure symmetric encryption which uses a cipher. So after creating the private key, we are encrypting it with a cipher.
 
 ![](https://github.com/jain-abhishek/images/blob/main/1.jpg)
 
@@ -62,7 +62,7 @@ openssl req -x509 -new -key rootCA.key -sha256 -days 365 -out rootCA.crt
 
 ![](https://github.com/jain-abhishek/images/blob/main/2.JPG)
 
-&nbsp;&nbsp;&nbsp;&nbsp;Here CN is important, it must be address/FQDN of the server you want to access, otherwise you will see errors: java.security.cert.CertificateException: No name matching <host> found.  
+&nbsp;&nbsp;&nbsp;&nbsp;Here CN (Common Name) is important, it must be address/FQDN of the server you want to access, otherwise you will see such errors: java.security.cert.CertificateException: No name matching <host> found.  
 
 3.	*Check if certificate is having all the necessary information which is provided in the previous step*
 ```
@@ -75,28 +75,32 @@ openssl x509 -in rootCA.crt -noout –text
 openssl genrsa -out redisServer.key -aes256 2048
 ```
   
-5.	*Create certificate signing request*
+5.	*Create Server CSR (certificate signing request)*
 ```  
 openssl req -new -sha256 -key redisServer.key -subj "/C=IN/O=OldIndianStreets/OU=IT/CN=${DNS_ADDRESS}" -out redisServer.csr
 openssl req -in redisServer.csr -noout -subject -verify
 ```  
 &nbsp;&nbsp;&nbsp;&nbsp;Here subject is important to provide
   
-&nbsp;&nbsp;&nbsp;&nbsp;Other important point is that CN of CA and Server must be different, otherwise you may see related errors.
+&nbsp;&nbsp;&nbsp;&nbsp;Other important point is that CN of CA and Server must be different (which can bot be same in prod obviously), otherwise you may see related errors.
   
-6.	*Sign server certificate using CA private key and certificate*
+ 
+6.	*Sign server certificate using CA keypair*
 ```  
 openssl x509 -req -in redisServer.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out redisServer.crt -extfile <(printf "\n[SAN]\nsubjectAltName=DNS:${DNS_ADDRESS}\nextendedKeyUsage=serverAuth") -days 365 -sha256 -ext SAN -extensions SAN
 ```
-&nbsp;&nbsp;&nbsp;&nbsp;CAcreateserial: while signing CA generates a unique serial number for each certificate
+&nbsp;&nbsp;&nbsp;&nbsp;CAcreateserial: while signing, CA generates a unique serial number for each certificate
                                                                                                                               
-&nbsp;&nbsp;&nbsp;&nbsp;extension: to include subject alternative name                                                        
+&nbsp;&nbsp;&nbsp;&nbsp;SAN: subject alternative name tells that all subdomains are secured by the same SSL certificate
+
+Here SAN are important to provide, otherwise you may see errors like: No subject alternative names matching IP address. Or: javax.net.ssl.SSLHandshakeException: java.security.cert.CertificateException: No subject alternative names present.                                                            
+
+&nbsp;&nbsp;&nbsp;&nbsp;extension: to include SAN
 
 &nbsp;&nbsp;&nbsp;&nbsp;extendedKeyUsage: to specify the usage of certificate ie: for server authentication or client authentication or both. Here the value is set as serverAuth, so the certificate is created for server authentication only.
 
-Here subject alt name are important to provide, otherwise you may see errors like: No subject alternative names matching IP address. Or: javax.net.ssl.SSLHandshakeException: java.security.cert.CertificateException: No subject alternative names present.                                                            
 
-7.	*Check signed certificate has information about issuer, subject and san*
+7.	*Verify that the signed Server certificate has information of issuer, subject and san*
 ```
 openssl x509 -in redisServer.crt -noout -text -purpose                                                                                                                           openssl verify -CAfile rootCA.crt redisServer.crt
 ```
@@ -114,26 +118,37 @@ openssl x509 -req -in redisClient.csr -CA rootCA.crt -CAkey rootCA.key -CAcreate
 
 &nbsp;&nbsp;&nbsp;&nbsp;Here extendedKeyUsage is set as clientAuth, so the certificate can be used for client authentication only.
 
-9. 
+ 
+9. *Verify that the signed Client certificate has information of issuer, subject and san*
 ```
 openssl x509 -in redisClient.crt -noout -text -purpose
 ``` 
 ![](https://github.com/jain-abhishek/images/blob/main/8.JPG)
 ![](https://github.com/jain-abhishek/images/blob/main/9.JPG)
  
+ 
 10.	*Create keystore by including Client keypair*
+
+We will use the keystore in Redission Client code in order to get authenticated by the Server 
+ 
 ```                                                                                                                              
 openssl pkcs12 -export -in redisClient.crt -inkey redisClient.key -out redisClientKeystore.p12 -CAfile rootCA.crt
 ```
+ 
 &nbsp;&nbsp;&nbsp;&nbsp;pkcs12: standard of keystore
 
-11.	*Check if certificates exist in keystore*
+ 
+11.	*Check if keypair exist in keystore*
 ```
 openssl pkcs12 -info -in redisClientKeystore.p12
 ```
 ![](https://github.com/jain-abhishek/images/blob/main/5.JPG)
-                                                                                                                              
+ 
+ 
 12.	*Create truststore* 
+
+The truststore includes CA certificate by which Client certificate is signed. We will use it in Redisson client code.
+ 
 ```
 keytool -import -alias redisCA -trustcacerts -file rootCA.crt -keystore cacerts
 ```
