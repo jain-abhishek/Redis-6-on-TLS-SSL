@@ -191,6 +191,57 @@ Setting port 0 stops all non-tls communications.
  
 ![](https://github.com/jain-abhishek/images/blob/main/16.JPG)
  
+
+### E. Write client code in Redisson
+
+1. Add maven dependency
+``` 
+<dependencies>
+ <dependency>
+  <groupId>org.redisson</groupId>
+		<artifactId>redisson</artifactId>
+		<version>3.13.1</version>
+	</dependency>
+</dependencies>
+``` 
+2. 
+```
+import java.net.MalformedURLException;
+import java.net.URI;
+import org.redisson.Redisson;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
+import org.redisson.config.SingleServerConfig;
+import org.redisson.config.TransportMode;
+
+public class RedissonOnTLS {
+	public static void main(String[] args) throws MalformedURLException {
+		Config config = new Config();
+		config.setTransportMode(TransportMode.NIO);
+		
+		SingleServerConfig serverConfig = config.useSingleServer();
+		serverConfig.setAddress("rediss://ec2-3-143-214-20.us-east-2.compute.amazonaws.com:6379");
+		serverConfig.setSslKeystore(URI.create("file:/C:/workspace/Redis/redisClientKeystore.p12").toURL());
+		serverConfig.setSslKeystorePassword("passwd");  // Used passwd as keystore, truststore and user password
+		serverConfig.setSslTruststore(URI.create("file:/C:/workspace/Redis/cacerts").toURL());
+		serverConfig.setSslTruststorePassword("passwd");
+		serverConfig.setPassword("passwd");
+		
+		RedissonClient client = Redisson.create(config);
+		RBucket<String> bucket = client.getBucket("key");
+		bucket.set("value");
+		
+		bucket = client.getBucket("key");
+		System.out.println(bucket.get());
+		
+		client.shutdown();
+	}
+}
+```
+ 
+![](https://github.com/jain-abhishek/images/blob/main/17.JPG)
+ 
  
 Please refer following URLs for more information:
                                                                                                                               
@@ -201,6 +252,6 @@ https://wiki.openssl.org/index.php/Command_Line_Utilities
 https://redis.io/topics/encryption
 
 https://www.digicert.com/faq/subject-alternative-name.htm 
-                                                                                                                              
-
-
+ 
+https://redisson.org/redis-java-client-with-code-example.html
+                                                 
