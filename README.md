@@ -8,13 +8,15 @@ B.	Generate keypairs:
   * Generate Server private key and csr (certificate signing request)
   * Generate Server certificate (by signing with CA keypair)
   * Create Client private key and csr
-  * Generate Client certificate (by signing with CA keypair)
+  * Generate Client certificate (by signing with the same CA keypair)
   * Create KeyStore and import Client keypair 
   * Create TrustStore and import CA certificate
   
 C.	Configure redis.conf and start redis-server
 
 D.	Start redis-cli in tls mode
+
+E. 	Access Server using Redisson
 
 ## Detailed Steps:
 
@@ -114,6 +116,9 @@ openssl x509 -in redisServer.crt -noout -text -purpose                          
 ![](https://github.com/jain-abhishek/images/blob/main/7.JPG)
     
 8.	*Create Client keypair*
+
+Important: The Client CSR needs to be signed by the same CA which is used to sign Server CSR. (I do'nt find a way to upload a different CA certificate (which is used to sign Client certificate) at Redis Server side. Else you may see such error: Caused by: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target.
+															      
 ```                                                                                                                              
 openssl genrsa -out redisClient.key -aes256 2048
 openssl req -new -sha256 -key redisClient.key -subj "/C=IN/O=OldIndianStreets/OU=Client/CN=${DNS_ADDRESS}" -out redisClient.csr
@@ -173,6 +178,7 @@ tls-key-file /path/to/redisServer.key
 tls-ca-cert-file /path/to/rootCA.crt
 port 0
 tls-port 6379
+tls-auth-clients yes
 ```
 
 Setting port 0 stops all non-tls communications. 
@@ -192,19 +198,22 @@ Setting port 0 stops all non-tls communications.
 ![](https://github.com/jain-abhishek/images/blob/main/16.JPG)
  
 
-### E. Write client code in Redisson
-
-1. Add maven dependency
+### E. Access Server using Redisson
+	
+1. Copy keystore and truststore at Client location
+	
+2. Add maven dependency
 ``` 
 <dependencies>
- <dependency>
-  <groupId>org.redisson</groupId>
-		<artifactId>redisson</artifactId>
-		<version>3.13.1</version>
-	</dependency>
+	<dependency>
+  		<groupId>org.redisson</groupId>
+  		<artifactId>redisson</artifactId>
+  		<version>3.13.1</version>
+ 	</dependency>
 </dependencies>
 ``` 
-2. 
+	
+3. 
 ```
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -216,8 +225,8 @@ import org.redisson.config.SingleServerConfig;
 import org.redisson.config.TransportMode;
 
 public class RedissonOnTLS {
-	public static void main(String[] args) throws MalformedURLException {
-		Config config = new Config();
+ 	public static void main(String[] args) throws MalformedURLException {
+  		Config config = new Config();
 		config.setTransportMode(TransportMode.NIO);
 		
 		SingleServerConfig serverConfig = config.useSingleServer();
