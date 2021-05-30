@@ -1,5 +1,7 @@
 # Redis6 on TLS/SSL
 
+**The article describes how to configure TLS/SSL for Redis and test using Redisson client.**
+  
 A.	Install Redis
 
 B.	Generate keypairs:
