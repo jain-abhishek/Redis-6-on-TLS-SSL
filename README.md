@@ -165,7 +165,7 @@ keytool -list -keystore cacerts
   
  
 ### C.	Configure redis.conf and start redis server
-
+ 
 *Update redis configuration file with TLS properties*
 ```
 tls-cert-file /path/to/redisServer.crt
@@ -174,17 +174,24 @@ tls-ca-cert-file /path/to/rootCA.crt
 port 0
 tls-port 6379
 ```
-                                                                                                                              
+
+Setting port 0 stops all non-tls communications. 
+ 
 *Start redis server*
 ```
 ./redis-server redis.conf
 ```
-                                                                                                                              
-### D.	Start redis-cli with certificates by passing CA and server’s private key, certificate
+ 
+![](https://github.com/jain-abhishek/images/blob/main/15.JPG)
+ 
+### D.	Start redis-cli with certificates by passing CA certificate and Client keypair
 ```
-./redis-cli --tls --cert redisServer.crt --key redisServer.key  --cacert rootCA.crt -a
+./redis-cli --tls --cert redisClient.crt --key redisClient.key  --cacert rootCA.crt 
 ```
-
+ 
+![](https://github.com/jain-abhishek/images/blob/main/16.JPG)
+ 
+ 
 Please refer following URLs for more information:
                                                                                                                               
 https://en.wikipedia.org/wiki/PKCS
