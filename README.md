@@ -81,7 +81,7 @@ openssl genrsa -out redisServer.key -aes256 2048
   
 5.	*Create Server CSR (certificate signing request)*
 ```  
-openssl req -new -sha256 -key redisServer.key -subj "/C=IN/O=OldIndianStreets/OU=IT/CN=${DNS_ADDRESS}" -out redisServer.csr
+openssl req -new -sha256 -key redisServer.key -subj "/C=IN/O=OldIndianStreets/OU=RedisServer/CN=${DNS_ADDRESS}" -out redisServer.csr
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;Here subject is important to provide
   
