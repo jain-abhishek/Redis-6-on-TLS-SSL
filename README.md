@@ -85,8 +85,12 @@ openssl req -new -sha256 -key redisServer.key -subj "/C=IN/O=OldIndianStreets/OU
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;Here subject is important to provide
   
-&nbsp;&nbsp;&nbsp;&nbsp;Other important point is that CN of CA and Server must be different (which can bot be same in prod obviously), otherwise you may see related errors.
+&nbsp;&nbsp;&nbsp;&nbsp;Other important point is that CN of CA and Server must be different (which can bot be same in prod obviously), otherwise you may see such errors:
+java.security.cert.CertificateException: No name matching <hostname> found
+javax.net.ssl.SSLHandshakeException: No name matching <hostname> found
 
+Important: set Server CN as hostname/FQDN as the certificate is valid only if the request hostname matches the certificate common name.
+	
 ```
 openssl req -in redisServer.csr -noout -subject -verify
 ```  
@@ -104,7 +108,7 @@ Here SAN are important to provide, otherwise you may see errors like: No subject
 
 &nbsp;&nbsp;&nbsp;&nbsp;extension: to include SAN
 
-&nbsp;&nbsp;&nbsp;&nbsp;extendedKeyUsage: to specify the usage of certificate ie: for server authentication or client authentication or both. Here the value is set as serverAuth, so the certificate is created for server authentication only.
+&nbsp;&nbsp;&nbsp;&nbsp;extendedKeyUsage: to specify the usage of certificate ie: for server authentication or client authentication or both. Its mandatory parameter to set in order to generate separate certificates for Server and Client. Here the value is set as serverAuth, so the certificate is created for server authentication only.
 
 
 7.	*Verify that the signed Server certificate has information of issuer, subject and san*
