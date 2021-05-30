@@ -50,8 +50,8 @@ openssl genrsa -out rootCA.key –aes256 2048
   
 &nbsp;&nbsp;&nbsp;&nbsp;aes256: a secure symmetric encryption which uses a cipher. So after creating the private key, we are encrypting it with a cipher.
 
-![](https://github.com/jain-abhishek/images/blob/main/1.jpg)
-
+![](https://github.com/jain-abhishek/images/blob/main/1.JPG)
+    
 2.	*Generate CA certificate*
 ```
 openssl req -x509 -new -key rootCA.key -sha256 -days 365 -out rootCA.crt
@@ -69,8 +69,6 @@ openssl req -x509 -new -key rootCA.key -sha256 -days 365 -out rootCA.crt
 openssl x509 -in rootCA.crt -noout –text
 ```
 ![](https://github.com/jain-abhishek/images/blob/main/3.JPG)
-![](https://github.com/jain-abhishek/images/blob/main/4.JPG)
-
   
 4.	*Generate server private key*
 ```  
@@ -80,12 +78,15 @@ openssl genrsa -out redisServer.key -aes256 2048
 5.	*Create Server CSR (certificate signing request)*
 ```  
 openssl req -new -sha256 -key redisServer.key -subj "/C=IN/O=OldIndianStreets/OU=IT/CN=${DNS_ADDRESS}" -out redisServer.csr
-openssl req -in redisServer.csr -noout -subject -verify
-```  
+```
 &nbsp;&nbsp;&nbsp;&nbsp;Here subject is important to provide
   
 &nbsp;&nbsp;&nbsp;&nbsp;Other important point is that CN of CA and Server must be different (which can bot be same in prod obviously), otherwise you may see related errors.
-  
+
+```
+openssl req -in redisServer.csr -noout -subject -verify
+```  
+![](https://github.com/jain-abhishek/images/blob/main/4.JPG)
  
 6.	*Sign server certificate using CA keypair*
 ```  
