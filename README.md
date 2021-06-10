@@ -173,8 +173,19 @@ keytool -import -alias redisCA -trustcacerts -file rootCA.crt -keystore cacerts
 keytool -list -keystore cacerts
 ```
 ![](https://github.com/jain-abhishek/images/blob/main/14.JPG)
-  
- 
+
+14. To verify if the private key matches the certificate by checking their modulus
+```                                                                                                                              
+openssl x509 -noout -modulus -in redisServer.key | openssl sha256
+output: (stdin)= b2525f5a95e24dc348774a1be910fe93aa9298957cfb1253aa91c7bc2e319fda
+openssl rsa  -noout -modulus -in redisServer.crt | openssl sha256
+output: (stdin)= b2525f5a95e24dc348774a1be910fe93aa9298957cfb1253aa91c7bc2e319fda
+
+openssl x509 -noout -modulus -in redisClient.key | openssl sha256
+openssl x509 -noout -modulus -in redisClient.crt | openssl sha256
+```	
+If both the values are same, keypair are related to each other.
+	
 ### C.	Configure redis.conf and start redis server
  
 *Update redis configuration file with TLS properties*
